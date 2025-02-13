@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 100px;
+        }
+        #search-box {
+            width: 500px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 24px;
+            outline: none;
+        }
+        #search-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 24px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Google</h1>
+    <form action="/search" method="GET">
+        <input type="text" id="search-box" name="query" placeholder="Search Google or type a URL">
+        <br>
+        <button type="submit" id="search-button">Google Search</button>
+    </form>
+</body>
+</html>
