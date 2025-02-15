@@ -112,4 +112,10 @@ class IndexerTFIDF:
         results['tfidf_score'] = tfidf_scores[rank]
         results['final_score'] = final_scores[rank]
 
+        # Filter out documents with a final score of 0.0
+        results = results[results['final_score'] > 0.0].reset_index(drop=True)
+
+        # Trim text length for preview
+        results['text'] = results['text'].apply(lambda x: ' '.join(x.split()[:20]) + ('...' if len(x.split()) > 20 else ''))
+
         return results

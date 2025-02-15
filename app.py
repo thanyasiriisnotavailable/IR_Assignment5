@@ -1,11 +1,12 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, jsonify, render_template
 from elasticsearch import Elasticsearch
 import pandas as pd
 import time
+import re
 from IndexerTFIDF import IndexerTFIDF
 from IndexerTFIDF import Pr
 
-app = Flask(__name__, template_folder='C:/Users/acer/All SE/IR/Search_Engine')
+app = Flask(__name__, template_folder='C:/Users/acer/All SE/IR/Search_Engine/templates')
 app.es_client = Elasticsearch(
     "https://localhost:9200",
     basic_auth=("elastic", "M8OIu*UpfhnRm10hmp*X"),
@@ -13,6 +14,26 @@ app.es_client = Elasticsearch(
 )
 
 indexer = IndexerTFIDF(is_reset=False)
+
+def highlight_query_terms(text, query):
+    """
+    Highlights query terms in the text using <b> tags.
+    """
+    for term in query.split():
+        text = re.sub(f"({term})", r"<b>\1</b>", text, flags=re.IGNORECASE)
+    return text
+
+def extract_surrounding_text(text, query, max_sentences=2):
+    """
+    Extracts two or three sentences surrounding the query term.
+    """
+    sentences = re.split(r'(?<=[.!?]) +', text)
+    for i, sentence in enumerate(sentences):
+        if query.lower() in sentence.lower():
+            start = max(0, i - 1)
+            end = min(len(sentences), i + 2)
+            return ' '.join(sentences[start:end])
+    return ' '.join(sentences[:max_sentences])
 
 @app.route('/')
 def index():
@@ -35,28 +56,41 @@ def search():
             }
         }
     )
-    bm25_results_df = pd.DataFrame(
-        [
-            [hit["_source"]['title'], hit["_source"]['url'], hit["_source"]['text'][:100], hit["_score"]]
-            for hit in bm25_results['hits']['hits']
-        ],
-        columns=['title', 'url', 'text', 'score']
-    )
+    bm25_results_list = []
+    for hit in bm25_results['hits']['hits']:
+        text = extract_surrounding_text(hit["_source"]['text'], query_term)
+        text = highlight_query_terms(text, query_term)
+        bm25_results_list.append({
+            'title': hit["_source"]['title'],
+            'url': hit["_source"]['url'],
+            'text': text
+        })
 
     # Custom TF-IDF + PageRank search
     tfidf_results = indexer.query(query_term)
-    tfidf_results['text'] = tfidf_results['text'].apply(lambda x: ' '.join(x.split()[:20]) + ('...' if len(x.split()) > 20 else ''))
+    tfidf_results_list = []
+    for _, row in tfidf_results.iterrows():
+        text = extract_surrounding_text(row['text'], query_term)
+        text = highlight_query_terms(text, query_term)
+        tfidf_results_list.append({
+            'title': row['title'],
+            'url': row['url'],
+            'text': text
+        })
 
     end = time.time()
-    total_hit = len(bm25_results['hits']['hits']) + len(tfidf_results)
+    total_hit_bm25 = len(bm25_results['hits']['hits'])
+    total_hit_tfidf = len(tfidf_results)
     elapse = end - start
 
-    return render_template('search.html', 
-                           query=query_term, 
-                           total_hit=total_hit, 
-                           elapse=elapse, 
-                           bm25_results=bm25_results_df.to_dict('records'), 
-                           tfidf_results=tfidf_results[['title', 'url', 'text', 'final_score']].to_dict('records'))
+    return jsonify({
+        'query': query_term,
+        'total_hit_bm25': total_hit_bm25,
+        'total_hit_tfidf': total_hit_tfidf,
+        'elapse': elapse,
+        'bm25_results': bm25_results_list,
+        'tfidf_results': tfidf_results_list
+    })
 
 if __name__ == '__main__':
     app.run(debug=True)

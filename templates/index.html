@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 20px;
+        }
+        #search-box {
+            width: 500px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 24px;
+            outline: none;
+        }
+        #search-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 24px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+        }
+        .container {
+            display: flex;
+            margin-top: 20px;
+            gap: 20px;
+        }
+        .left, .right {
+            flex: 1;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .result {
+            margin-bottom: 20px;
+        }
+        .result a {
+            color: #1a0dab;
+            text-decoration: none;
+        }
+        .result a:hover {
+            text-decoration: underline;
+        }
+        .result p {
+            margin: 5px 0;
+            color: #545454;
+            line-height: 1.5;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2; /* Limit to 2 lines */
+            -webkit-box-orient: vertical;
+        }
+        .query-term {
+            font-weight: bold;
+        }
+        #results {
+            display: none;
+        }
+        h2 {
+            color: #000;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Google</h1>
+    <form id="search-form">
+        <input type="text" id="search-box" name="query" placeholder="Search Google or type a URL">
+        <br>
+        <button type="submit" id="search-button">Google Search</button>
+    </form>
+
+    <div id="results">
+        <div class="container">
+            <div class="left">
+                <h2>BM25 + PageRank</h2>
+                <p>Number of results: <span id="total-hit-bm25"></span></p>
+                <div id="bm25-results"></div>
+            </div>
+            <div class="right">
+                <h2>Custom TF-IDF + PageRank</h2>
+                <p>Number of results: <span id="total-hit-tfidf"></span></p>
+                <div id="tfidf-results"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('search-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+            const query = document.getElementById('search-box').value;
+
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('bm25-results').innerHTML = '<p>Loading...</p>';
+            document.getElementById('tfidf-results').innerHTML = '<p>Loading...</p>';
+
+            fetch(`/search?query=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('total-hit-bm25').textContent = data.total_hit_bm25;
+                    document.getElementById('total-hit-tfidf').textContent = data.total_hit_tfidf;
+
+                    const bm25Results = data.bm25_results.map(result => `
+                        <div class="result">
+                            <a href="${result.url}">${result.title}</a>
+                            <p>${result.text}</p>
+                        </div>
+                    `).join('');
+                    document.getElementById('bm25-results').innerHTML = bm25Results;
+
+                    const tfidfResults = data.tfidf_results.map(result => `
+                        <div class="result">
+                            <a href="${result.url}">${result.title}</a>
+                            <p>${result.text}</p>
+                        </div>
+                    `).join('');
+                    document.getElementById('tfidf-results').innerHTML = tfidfResults;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        });
+    </script>
+</body>
+</html>
