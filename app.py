@@ -15,25 +15,39 @@ app.es_client = Elasticsearch(
 
 indexer = IndexerTFIDF(is_reset=False)
 
+import re
+
 def highlight_query_terms(text, query):
     """
     Highlights query terms in the text using <b> tags.
     """
-    for term in query.split():
-        text = re.sub(f"({term})", r"<b>\1</b>", text, flags=re.IGNORECASE)
+    query_terms = query.split()
+    for term in query_terms:
+        text = re.sub(rf"\b({re.escape(term)})\b", r"<b>\1</b>", text, flags=re.IGNORECASE)
     return text
 
-def extract_surrounding_text(text, query, max_sentences=2):
+
+import re
+
+
+def extract_surrounding_text(text, query, max_sentences=3):
     """
-    Extracts two or three sentences surrounding the query term.
+    Extracts up to max_sentences surrounding the first occurrence of the query term.
     """
-    sentences = re.split(r'(?<=[.!?]) +', text)
+    sentences = re.split(r'(?<=[.!?])\s+', text)  # Split text into sentences while keeping punctuation
+    query_terms = query.lower().split()
+
+    # Find the sentence index that contains any query term
     for i, sentence in enumerate(sentences):
-        if query.lower() in sentence.lower():
-            start = max(0, i - 1)
-            end = min(len(sentences), i + 2)
-            return ' '.join(sentences[start:end])
-    return ' '.join(sentences[:max_sentences])
+        if any(term in sentence.lower() for term in query_terms):
+            start = max(0, i - 1)  # Start from the sentence before, if possible
+            end = min(len(sentences), i + 2)  # Include one after
+            selected_sentences = sentences[start:end]
+            break
+    else:
+        selected_sentences = sentences[:max_sentences]  # Default to first few if no match
+
+    return ' '.join(selected_sentences)
 
 @app.route('/')
 def index():
