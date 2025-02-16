@@ -145,11 +145,13 @@
         <div class="container">
             <div class="left">
                 <h2>BM25 + PageRank</h2>
+                <p>Time Taken: <span id="elapse-bm25"></span></p>
                 <p>Number of results: <span id="total-hit-bm25"></span></p>
                 <div id="bm25-results"></div>
             </div>
             <div class="right">
                 <h2>Custom TF-IDF + PageRank</h2>
+                <p>Time Taken: <span id="elapse-tfidf"></span></p>
                 <p>Number of results: <span id="total-hit-tfidf"></span></p>
                 <div id="tfidf-results"></div>
             </div>
@@ -170,6 +172,8 @@
                 .then(data => {
                     document.getElementById('total-hit-bm25').textContent = data.total_hit_bm25;
                     document.getElementById('total-hit-tfidf').textContent = data.total_hit_tfidf;
+                    document.getElementById('elapse-bm25').textContent = data.elapse_bm25
+                    document.getElementById('elapse-tfidf').textContent = data.elapse_tfidf
 
                     const bm25Results = data.bm25_results.map(result => `
                         <div class="result">

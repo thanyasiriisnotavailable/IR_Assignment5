@@ -56,7 +56,7 @@ def index():
 @app.route('/search', methods=['GET'])
 def search():
     query_term = request.args.get('query')
-    start = time.time()
+    start_bm25 = time.time()
 
     # BM25 + PageRank search
     bm25_results = app.es_client.search(
@@ -80,6 +80,9 @@ def search():
             'text': text
         })
 
+    end_bm25 = time.time()
+    start_tfidf = time.time()
+
     # Custom TF-IDF + PageRank search
     tfidf_results = indexer.query(query_term)
     tfidf_results_list = []
@@ -92,16 +95,18 @@ def search():
             'text': text
         })
 
-    end = time.time()
+    end_tfidf = time.time()
     total_hit_bm25 = len(bm25_results['hits']['hits'])
     total_hit_tfidf = len(tfidf_results)
-    elapse = end - start
+    elapse_bm25 = end_bm25 - start_bm25
+    elapse_tfidf = end_tfidf - start_tfidf
 
     return jsonify({
         'query': query_term,
         'total_hit_bm25': total_hit_bm25,
         'total_hit_tfidf': total_hit_tfidf,
-        'elapse': elapse,
+        'elapse_bm25': elapse_bm25,
+        'elapse_tfidf': elapse_tfidf,
         'bm25_results': bm25_results_list,
         'tfidf_results': tfidf_results_list
     })

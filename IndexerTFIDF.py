@@ -115,6 +115,9 @@ class IndexerTFIDF:
         # Filter out documents with a final score of 0.0
         results = results[results['final_score'] > 0.0].reset_index(drop=True)
 
+        # Remove duplicate rows based on 'text' column
+        results = results.drop_duplicates(subset=['text']).reset_index(drop=True)
+
         # Trim text length for preview
         results['text'] = results['text'].apply(lambda x: ' '.join(x.split()[:20]) + ('...' if len(x.split()) > 20 else ''))
 
