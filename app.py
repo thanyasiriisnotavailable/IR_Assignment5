@@ -53,6 +53,7 @@ def extract_surrounding_text(text, query, max_sentences=3):
 def index():
     return render_template('index.html')
 
+
 @app.route('/search', methods=['GET'])
 def search():
     query_term = request.args.get('query')
@@ -68,12 +69,24 @@ def search():
                 "query": {"match": {"text": query_term}},
                 "script": {"source": "_score * doc['pagerank'].value"}
             }
+        },
+        highlight={
+            "fields": {
+                "text": {}  # This will highlight the "text" field in the results
+            },
+            "pre_tags": ["<em>"],  # Tags to wrap around highlighted query terms
+            "post_tags": ["</em>"]  # Closing tag for the highlighted terms
         }
     )
+
     bm25_results_list = []
     for hit in bm25_results['hits']['hits']:
-        text = extract_surrounding_text(hit["_source"]['text'], query_term)
+        # Use the highlighted text if available
+        highlighted_text = hit.get('highlight', {}).get('text', [None])
+        text = highlighted_text[0] if highlighted_text[0] else extract_surrounding_text(hit["_source"]['text'],query_term)
+
         text = highlight_query_terms(text, query_term)
+
         bm25_results_list.append({
             'title': hit["_source"]['title'],
             'url': hit["_source"]['url'],
