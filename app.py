@@ -6,7 +6,7 @@ import re
 from IndexerTFIDF import IndexerTFIDF, highlight_and_trim
 from IndexerTFIDF import Pr
 
-app = Flask(__name__, template_folder='C:/Users/acer/All SE/IR/Search_Engine/templates')
+app = Flask(__name__, template_folder='.')
 app.es_client = Elasticsearch(
     "https://localhost:9200",
     basic_auth=("elastic", "M8OIu*UpfhnRm10hmp*X"),
@@ -25,10 +25,6 @@ def highlight_query_terms(text, query):
     for term in query_terms:
         text = re.sub(rf"\b({re.escape(term)})\b", r"<b>\1</b>", text, flags=re.IGNORECASE)
     return text
-
-
-import re
-
 
 def extract_surrounding_text(text, query, max_sentences=5):
     """
