@@ -3,7 +3,7 @@ from elasticsearch import Elasticsearch
 import pandas as pd
 import time
 import re
-from IndexerTFIDF import IndexerTFIDF
+from IndexerTFIDF import IndexerTFIDF, highlight_and_trim
 from IndexerTFIDF import Pr
 
 app = Flask(__name__, template_folder='C:/Users/acer/All SE/IR/Search_Engine/templates')
@@ -30,7 +30,7 @@ def highlight_query_terms(text, query):
 import re
 
 
-def extract_surrounding_text(text, query, max_sentences=3):
+def extract_surrounding_text(text, query, max_sentences=5):
     """
     Extracts up to max_sentences surrounding the first occurrence of the query term.
     """
@@ -81,16 +81,14 @@ def search():
 
     bm25_results_list = []
     for hit in bm25_results['hits']['hits']:
-        # Use the highlighted text if available
-        highlighted_text = hit.get('highlight', {}).get('text', [None])
-        text = highlighted_text[0] if highlighted_text[0] else extract_surrounding_text(hit["_source"]['text'],query_term)
-
-        text = highlight_query_terms(text, query_term)
+        # Get the text and apply custom highlight and trim
+        text = hit["_source"]['text']
+        highlighted_text = highlight_and_trim(text, query_term)
 
         bm25_results_list.append({
             'title': hit["_source"]['title'],
             'url': hit["_source"]['url'],
-            'text': text
+            'text': highlighted_text
         })
 
     end_bm25 = time.time()
@@ -100,7 +98,7 @@ def search():
     tfidf_results = indexer.query(query_term)
     tfidf_results_list = []
     for _, row in tfidf_results.iterrows():
-        text = extract_surrounding_text(row['text'], query_term)
+        text = extract_surrounding_text(row['text'], query_term)  # Keep this for TF-IDF results
         text = highlight_query_terms(text, query_term)
         tfidf_results_list.append({
             'title': row['title'],
