@@ -4,6 +4,7 @@ import pickle
 import json
 import numpy as np
 import pandas as pd
+import re
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -96,6 +97,8 @@ class IndexerTFIDF:
         with open(self.stored_file, 'wb') as f:
             pickle.dump(self.__dict__, f)
 
+    import re
+
     def query(self, q):
         # Transform the query using the fitted TF-IDF vectorizer
         transformed_query = self.tfidf_vectorizer.transform([q])
@@ -115,10 +118,41 @@ class IndexerTFIDF:
         # Filter out documents with a final score of 0.0
         results = results[results['final_score'] > 0.0].reset_index(drop=True)
 
+        def highlight_and_trim(text, query, max_length=200):
+            query_words = query.split()  # Handle multi-word queries
+            text_lower = text.lower()
+
+            # Find first occurrence of any query word
+            query_positions = [text_lower.find(word.lower()) for word in query_words if word.lower() in text_lower]
+            start_idx = min(query_positions) if query_positions else 0  # Default to 0 if no query found
+
+            # Define snippet range: Try centering the query
+            snippet_start = max(0, start_idx - max_length // 4)  # Shift start back a little for context
+            snippet_end = min(len(text), snippet_start + max_length)
+
+            # Extract the snippet
+            preview_text = text[snippet_start:snippet_end]
+
+            # Ensure it starts and ends at word boundaries
+            if snippet_start > 0:
+                preview_text = '...' + preview_text[preview_text.index(' '):]  # Avoid cutting first word
+            if snippet_end < len(text):
+                preview_text = preview_text[:preview_text.rindex(' ')] + '...'  # Avoid cutting last word
+
+            # Highlight query terms
+            for word in query_words:
+                preview_text = re.sub(f'(?i)\\b({word})\\b', r'<b>\1</b>', preview_text)
+
+            return preview_text
+
+        # Apply transformation
+        results['text'] = results['text'].apply(lambda x: highlight_and_trim(x, q))
+
         # Remove duplicate rows based on 'text' column
         results = results.drop_duplicates(subset=['text']).reset_index(drop=True)
+        results = results.drop_duplicates(subset=['title']).reset_index(drop=True)
+        results = results.drop_duplicates(subset=['url']).reset_index(drop=True)
 
-        # Trim text length for preview
-        results['text'] = results['text'].apply(lambda x: ' '.join(x.split()[:20]) + ('...' if len(x.split()) > 20 else ''))
+        print(results['text'][0])
 
         return results
