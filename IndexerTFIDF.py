@@ -9,6 +9,7 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from m4 import preProcess
+from m4 import preprocess_stopwords
 
 class Pr:
     def __init__(self, alpha):
@@ -90,7 +91,7 @@ class IndexerTFIDF:
         self.documents['pagerank'] = self.documents['url'].map(self.pr.pr_result['score'])
 
         # Create and fit the TF-IDF vectorizer
-        self.tfidf_vectorizer = TfidfVectorizer(preprocessor=preProcess, stop_words=stopwords.words('english'))
+        self.tfidf_vectorizer = TfidfVectorizer(preprocessor=preProcess, stop_words=preprocess_stopwords(stopwords.words('english')))
         self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(
             self.documents.apply(lambda s: ' '.join(s[['title', 'text']]), axis=1))
 
@@ -122,9 +123,13 @@ class IndexerTFIDF:
             query_words = query.split()  # Handle multi-word queries
             text_lower = text.lower()
 
-            # Find first occurrence of any query word
-            query_positions = [text_lower.find(word.lower()) for word in query_words if word.lower() in text_lower]
-            start_idx = min(query_positions) if query_positions else 0  # Default to 0 if no query found
+            # Find first occurrence of any whole-word query match
+            query_positions = [
+                match.start() for word in query_words
+                for match in re.finditer(rf'\b{re.escape(word)}\b', text_lower)  # Exact whole word match
+            ]
+
+            start_idx = min(query_positions) if query_positions else 0  # Default to 0 if no match found
 
             # Define snippet range: Try centering the query
             snippet_start = max(0, start_idx - max_length // 4)  # Shift start back a little for context
@@ -134,14 +139,14 @@ class IndexerTFIDF:
             preview_text = text[snippet_start:snippet_end]
 
             # Ensure it starts and ends at word boundaries
-            if snippet_start > 0:
+            if snippet_start > 0 and ' ' in preview_text:
                 preview_text = '...' + preview_text[preview_text.index(' '):]  # Avoid cutting first word
-            if snippet_end < len(text):
+            if snippet_end < len(text) and ' ' in preview_text:
                 preview_text = preview_text[:preview_text.rindex(' ')] + '...'  # Avoid cutting last word
 
-            # Highlight query terms
+            # Highlight query terms with whole word matching
             for word in query_words:
-                preview_text = re.sub(f'(?i)\\b({word})\\b', r'<b>\1</b>', preview_text)
+                preview_text = re.sub(rf'\b{re.escape(word)}\b', r'<b>\g<0></b>', preview_text, flags=re.IGNORECASE)
 
             return preview_text
 
@@ -152,7 +157,5 @@ class IndexerTFIDF:
         results = results.drop_duplicates(subset=['text']).reset_index(drop=True)
         results = results.drop_duplicates(subset=['title']).reset_index(drop=True)
         results = results.drop_duplicates(subset=['url']).reset_index(drop=True)
-
-        print(results['text'][0])
 
         return results
